@@ -1,57 +1,71 @@
-async function getData(amount = 3, cursor: string) {
-  const results = await fetch(
-    "https://eu-central-1-shared-euc1-02.cdn.hygraph.com/content/clifk2kla052e01ui88kyhe0c/master",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      next: { revalidate: 10 },
-      body: JSON.stringify({
-        query: `
-          query Talks($cursor: String, $amount: Int!) {
-            page: talksConnection(after: $cursor, first: $amount, orderBy: date_DESC) {
-              talks: edges {
-              cursor
-                talk: node {
-                  conference
-                  date
-                  link
-                  location
-                  talk
-                }
-              }
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-              aggregate {
-                count
-              }
-            }
-          }
-        `,
-        variables: {
-          amount,
-          cursor: cursor || null,
-        },
-      }),
-    }
-  );
+"use client";
+import { useState } from "react";
+import Post from "./Post";
+import { getData } from "../helpers";
 
-  const json = await results.json();
-  const { page } = json.data;
-  const { endCursor, hasNextPage } = page.pageInfo;
-
-  return {
-    talks: page.talks,
-    endCursor,
-    hasNextPage,
+type Post = {
+  cursor: string;
+  post: {
+    slug: string;
+    id: string;
+    createdAt: string;
+    content: {
+      html: string;
+    };
   };
-}
+};
 
-export default async function List() {
-  const { talks, endCursor, hasNextPage } = await getData(3, "");
+export default function List() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [nextCursor, setNextCursor] = useState("");
+  const [hasNext, setHasNext] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  return <pre>{JSON.stringify(talks, null, " ")}</pre>;
+  const fetchPosts = async (currentCursor: string) => {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+
+    const {
+      posts: postsData,
+      endCursor,
+      hasNextPage,
+    } = await getData(3, currentCursor);
+
+    setPosts((prevPosts) => [...prevPosts, ...postsData]);
+    setNextCursor(endCursor);
+    setHasNext(hasNextPage);
+    setLoading(false);
+  };
+
+  useState(() => {
+    fetchPosts(nextCursor);
+  }, []);
+
+  const handleLoadMore = () => {
+    fetchPosts(nextCursor);
+  };
+
+  return (
+    <div>
+      {posts.map((post: Post) => (
+        <Post post={post} key={post.cursor} />
+      ))}
+      {loading && (
+        <div className="bg-white mb-4 p-4 rounded-md text-center">
+          Loading...
+        </div>
+      )}
+      {hasNext && !loading && (
+        <button
+          className="bg-white mb-4 p-4 rounded-md"
+          onClick={handleLoadMore}
+        >
+          Load More
+        </button>
+      )}
+    </div>
+  );
 }
