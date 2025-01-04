@@ -55,12 +55,11 @@ async function getData(amount = 3, cursor: string) {
 
   const json = await results.json();
   const { pages } = json.data;
-  const { endCursor, hasNextPage } = pages.pageInfo;
-
+  
   return {
-    posts: pages.posts,
-    endCursor,
-    hasNextPage,
+    posts: pages.posts || [],
+    endCursor: pages.pageInfo.endCursor,
+    hasNextPage: pages.pageInfo.hasNextPage,
   };
 }
 
@@ -88,7 +87,7 @@ export default function List() {
 
   useEffect(() => {
     fetchPosts();
-  }, []); // Only run on mount
+  }, []);
 
   const handleLoadMore = () => {
     if (nextCursor) {
@@ -97,18 +96,18 @@ export default function List() {
   };
 
   return (
-    <div>
+    <div className="space-y-4">
       {posts.map((post: Post) => (
         <Post post={post} key={post.cursor} />
       ))}
       {loading && (
-        <div className="bg-white mb-4 p-4 rounded-md text-center">
+        <div className="bg-black text-white border border-white mb-4 p-4 rounded-md text-center">
           Loading...
         </div>
       )}
       {nextCursor && !loading && (
         <button
-          className="bg-white mb-4 p-4 rounded-md"
+          className="bg-black text-white border border-white mb-4 p-4 rounded-md w-full hover:bg-white hover:text-black transition-colors"
           onClick={handleLoadMore}
         >
           Load More
