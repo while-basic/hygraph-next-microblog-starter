@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Post from "./Post";
 
 type Post = {
@@ -16,7 +16,7 @@ type Post = {
 
 async function getData(amount = 3, cursor: string) {
   const results = await fetch(
-    "https://us-east-1-shared-usea1-02.cdn.hygraph.com/content/clcrreocx0oot01ur229906i3/master",
+    "https://us-west-2.cdn.hygraph.com/content/cm5hsqet7013y07wadmqo5je6/master",
     {
       method: "POST",
       headers: {
@@ -66,35 +66,34 @@ async function getData(amount = 3, cursor: string) {
 
 export default function List() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [nextCursor, setNextCursor] = useState("");
-  const [hasNext, setHasNext] = useState(true);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchPosts = async (currentCursor: string) => {
-    if (loading) {
-      return;
-    }
-
+  const fetchPosts = async (cursor: string | null = null) => {
     setLoading(true);
-
-    const {
-      posts: postsData,
-      endCursor,
-      hasNextPage,
-    } = await getData(3, currentCursor);
-
-    setPosts((prevPosts) => [...prevPosts, ...postsData]);
-    setNextCursor(endCursor);
-    setHasNext(hasNextPage);
-    setLoading(false);
+    try {
+      const { posts: newPosts, endCursor, hasNextPage } = await getData(3, cursor || "");
+      if (cursor) {
+        setPosts(prev => [...prev, ...newPosts]);
+      } else {
+        setPosts(newPosts);
+      }
+      setNextCursor(hasNextPage ? endCursor : null);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useState(() => {
-    fetchPosts(nextCursor);
-  }, []);
+  useEffect(() => {
+    fetchPosts();
+  }, []); // Only run on mount
 
   const handleLoadMore = () => {
-    fetchPosts(nextCursor);
+    if (nextCursor) {
+      fetchPosts(nextCursor);
+    }
   };
 
   return (
@@ -107,7 +106,7 @@ export default function List() {
           Loading...
         </div>
       )}
-      {hasNext && !loading && (
+      {nextCursor && !loading && (
         <button
           className="bg-white mb-4 p-4 rounded-md"
           onClick={handleLoadMore}

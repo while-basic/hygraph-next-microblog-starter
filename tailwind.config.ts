@@ -9,7 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: "rgb(102,99,253)",
+        brand: "#000000",
       },
     },
   },
